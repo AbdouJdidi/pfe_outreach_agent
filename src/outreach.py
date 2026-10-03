@@ -122,28 +122,75 @@ def build_company_evidence(company):
         "website_evidence": text,
     }
 
-
 def generate_email(company, contact):
     evidence = build_company_evidence(company)
 
     prompt = f"""
-You are writing a professional cold email for a final-year
-software engineering student applying for a 6-month PFE
-(final-year graduation internship).
+You are writing a real PFE application email for Abderrahmen Jedidi.
 
-Candidate profile:
+The email must sound like a genuine personal application, similar to an
+email a strong final-year engineering student would send directly to a
+company. It must NOT sound like a generic cold-email template.
 
-- Final-year software engineering student at FST Tunisia
-- Looking for a 6-month PFE
-- Main interests: Cloud, DevOps, AI and Software Engineering
-- AWS Solutions Architect – Associate
-- Experience with Docker, CI/CD, GCP, Linux
-- Backend development with Node.js and Python
-- Software engineering experience
-- Based in Tunisia
-- Available for a 6-month final-year internship
+====================
+CANDIDATE
+====================
 
-Company:
+Name: Abderrahmen Jedidi
+
+Education:
+- Final-year software engineering student
+- Faculty of Sciences of Tunis (FST), Tunisia
+
+PFE:
+- 6-month graduation internship
+- START DATE: February 2027
+- This date is fixed.
+- NEVER use July, October, January, "immediately", "early October",
+  "early July", or any other starting date.
+
+Internship experience:
+- Satoripop — DevOps / Cloud
+- Tunisie Telecom — Software / Full-Stack Engineering
+- VISIOAD — Software Engineering / DevOps / AI-related work
+- Dot-IT — Software Engineering / Full-Stack Development
+
+Other experience:
+- Freelance software development
+- Experience building solutions around real client requirements
+
+Technical interests:
+- Cloud
+- DevOps
+- Applied AI
+- Software Engineering
+- Backend development
+
+Technical background:
+- AWS
+- Docker
+- CI/CD
+- GCP
+- Linux
+- Node.js
+- Python
+
+Certifications:
+- AWS Certified Solutions Architect – Associate
+- AWS Certified Cloud Practitioner
+
+Personal project:
+- ClipForge
+- AI-powered clipping agent
+- Automates parts of the content-production workflow
+- Designed to operate with minimal supervision
+
+Phone:
++216 53 158 628
+
+====================
+COMPANY
+====================
 
 Name: {evidence["name"]}
 Website: {evidence["website"]}
@@ -153,40 +200,134 @@ Technical domains: {evidence["domains"]}
 Website evidence:
 {evidence["website_evidence"]}
 
-Contact:
-{contact["email"]}
+====================
+CONTACT
+====================
 
-Contact type:
-{contact["contact_type"]}
+Email: {contact["email"]}
+Contact type: {contact["contact_type"]}
+Source: {contact["source_url"]}
 
-Contact source:
-{contact["source_url"]}
+====================
+EMAIL STRUCTURE
+====================
 
-TASK:
+Write the email using this general structure:
 
-Write ONE concise personalized PFE application email.
+1. Greeting.
 
-Requirements:
+2. Opening:
+   Introduce Abderrahmen as a final-year software engineering student
+   at FST Tunisia and clearly state that he is applying for a
+   6-month PFE starting in February 2027.
 
-1. Mention the company by name.
-2. Mention ONE or TWO specific things from the website evidence
-   that genuinely connect to the candidate's Cloud/DevOps/AI/
-   Software Engineering interests.
-3. Clearly ask about a 6-month PFE opportunity.
-4. Do not claim that the company offers internships unless
-   the evidence explicitly shows it.
-5. If the contact is a generic careers/jobs/contact address,
-   address the company/team naturally rather than inventing
-   a person's name.
-6. If the contact is clearly a person's email, do not invent
-   their job title.
-7. Keep the email concise: approximately 150-200 words.
-8. Natural professional English.
-9. No exaggerated praise.
-10. Do not say "I am passionate" repeatedly.
-11. Do not mention that an AI generated the email.
-12. Do not invent technologies or projects not present in the
-    candidate profile or company evidence.
+3. Experience paragraph:
+   Briefly mention the four internships at Satoripop, Tunisie Telecom,
+   VISIOAD and Dot-IT.
+
+   Do NOT describe every internship in detail.
+   The goal is to establish that the candidate already has practical
+   professional experience.
+
+4. Additional profile paragraph:
+   Mention freelance software development experience.
+
+   Mention ClipForge as an example of the candidate's initiative and
+   applied AI interest.
+
+5. Certifications:
+   Mention the AWS Certified Solutions Architect – Associate and
+   AWS Certified Cloud Practitioner certifications.
+
+6. COMPANY-SPECIFIC PARAGRAPH:
+   This is the most important paragraph.
+
+   Explain what specifically interests the candidate about THIS company.
+
+   Use ONE or TWO concrete facts from the website evidence.
+
+   Connect those facts to the candidate's actual background and
+   interests.
+
+   Examples:
+   - AI company → emphasize ClipForge + applied AI + software engineering
+   - Cloud/DevOps company → emphasize AWS + Docker + CI/CD + cloud experience
+   - Software agency → emphasize internships + backend/full-stack + freelance work
+   - Mixed company → combine only the most relevant parts
+
+7. Closing:
+   Clearly say that the candidate would welcome the opportunity to
+   contribute as a PFE intern and discuss whether there is an opportunity
+   within the company.
+
+8. Say that the CV is attached.
+
+9. Sign:
+
+Best regards,
+
+Abderrahmen Jedidi
++216 53 158 628
+
+====================
+IMPORTANT RULES
+====================
+
+- The PFE starts in February 2027. This is NON-NEGOTIABLE.
+- NEVER invent another start date.
+- NEVER say "available immediately".
+- NEVER say "available to start".
+- Do not invent an internship program.
+- We are proactively asking whether the company would consider a PFE.
+- Do not claim that the company currently has a PFE opening unless the
+  website evidence explicitly says so.
+- Do not invent technologies used by the company.
+- Do not invent technologies used by the candidate.
+- Do not claim the candidate used Kubernetes unless it is explicitly
+  present in the candidate profile above.
+- Do not invent company projects.
+- Only use company-specific facts supported by the website evidence.
+- Do not mention every technical skill just to fill space.
+- Keep the email around 230-300 words.
+- Professional but natural English.
+- Confident but not arrogant.
+- No exaggerated praise.
+- No "dream company".
+- No "perfect fit".
+- No "I am extremely passionate".
+- No generic corporate fluff.
+- Do not sound like an automated outreach campaign.
+- Do not mention AI generation.
+- Do not use placeholders.
+- Do not use "[Your Name]", "[Company]", "[Month]", etc.
+
+GREETING:
+
+For jobs@, careers@, contact@ or another generic company address:
+"Dear [Company] Team,"
+
+For a clearly identifiable person:
+"Dear Mr. [Surname],"
+or
+"Dear Ms. [Surname],"
+
+Do not invent a person's name.
+
+SUBJECT:
+
+Create a natural subject based on the company and relevant technical
+area.
+
+Examples:
+"PFE Application – Cloud & DevOps – February 2027"
+"PFE Application – Software Engineering & AI – February 2027"
+"PFE Application – Software Engineering – February 2027"
+
+Do not use the exact same subject for every company.
+
+====================
+RETURN FORMAT
+====================
 
 Return ONLY valid JSON:
 
@@ -215,21 +356,12 @@ Return ONLY valid JSON:
 
         response.raise_for_status()
 
-        raw = response.json().get(
-            "response",
-            "",
-        )
+        raw = response.json().get("response", "")
 
         try:
             return json.loads(raw)
-
         except json.JSONDecodeError:
-            match = re.search(
-                r"\{.*\}",
-                raw,
-                re.DOTALL,
-            )
-
+            match = re.search(r"\{.*\}", raw, re.DOTALL)
             if match:
                 return json.loads(match.group(0))
 
