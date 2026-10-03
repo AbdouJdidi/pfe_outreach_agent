@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 import json
 
+
 DB_PATH = Path("data/pfe_agent.db")
 
 
@@ -11,6 +12,7 @@ def connect():
     c = sqlite3.connect(DB_PATH)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys = ON")
+
     return c
 
 
@@ -19,48 +21,57 @@ def init_db():
         c.executescript("""
         CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             name TEXT NOT NULL,
             domain TEXT UNIQUE NOT NULL,
             website TEXT,
-
             location TEXT,
             company_type TEXT,
-
             description TEXT,
-
             source TEXT,
             source_url TEXT,
-
             raw_text TEXT,
             fetched_text TEXT,
-
             verified INTEGER DEFAULT 0,
             discovery_score INTEGER DEFAULT 0,
-
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS analyses (
             company_id INTEGER PRIMARY KEY,
-
             score INTEGER,
             priority TEXT,
-
             domains TEXT,
-
             remote_compatible INTEGER,
             pfe_potential TEXT,
-
             reasoning TEXT,
             raw_json TEXT,
-
             analyzed_at TEXT DEFAULT CURRENT_TIMESTAMP,
-
             FOREIGN KEY(company_id)
                 REFERENCES companies(id)
                 ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            company_id INTEGER NOT NULL,
+
+            email TEXT NOT NULL,
+
+            contact_type TEXT DEFAULT 'other',
+
+            source_url TEXT,
+
+            confidence INTEGER DEFAULT 0,
+
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY(company_id)
+                REFERENCES companies(id)
+                ON DELETE CASCADE,
+
+            UNIQUE(company_id, email)
         );
 
         CREATE INDEX IF NOT EXISTS idx_companies_domain
@@ -71,6 +82,42 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_analyses_score
         ON analyses(score);
+
+        CREATE INDEX IF NOT EXISTS idx_contacts_company
+        ON contacts(company_id);
+
+        CREATE INDEX IF NOT EXISTS idx_contacts_email
+        ON contacts(email);
+
+
+                CREATE TABLE IF NOT EXISTS outreach (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            company_id INTEGER NOT NULL,
+            contact_id INTEGER,
+
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+
+            status TEXT DEFAULT 'draft',
+
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY(company_id)
+                REFERENCES companies(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY(contact_id)
+                REFERENCES contacts(id)
+                ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_outreach_company
+        ON outreach(company_id);
+
+        CREATE INDEX IF NOT EXISTS idx_outreach_status
+        ON outreach(status);
         """)
 
 
@@ -169,12 +216,9 @@ def get_unanalyzed(limit=100):
             FROM companies c
             LEFT JOIN analyses a
                 ON a.company_id = c.id
-
             WHERE a.company_id IS NULL
               AND c.verified = 1
-
             ORDER BY c.discovery_score DESC, c.id
-
             LIMIT ?
         """, (limit,)).fetchall()
 
@@ -230,6 +274,7 @@ def ranked(limit=50):
     with connect() as c:
         return c.execute("""
             SELECT
+                c.id,
                 c.name,
                 c.domain,
                 c.website,
@@ -238,23 +283,98 @@ def ranked(limit=50):
                 c.source,
                 c.verified,
                 c.discovery_score,
-
+                c.fetched_text,
                 a.score,
                 a.priority,
                 a.domains,
                 a.remote_compatible,
                 a.pfe_potential,
-                a.reasoning
-
+                a.reasoning,
+                a.raw_json
             FROM companies c
-
             JOIN analyses a
                 ON a.company_id = c.id
-
             ORDER BY a.score DESC
-
             LIMIT ?
         """, (limit,)).fetchall()
+
+
+def save_contact(
+    company_id,
+    email,
+    contact_type="other",
+    source_url="",
+    confidence=0,
+):
+    with connect() as c:
+        c.execute("""
+            INSERT INTO contacts (
+                company_id,
+                email,
+                contact_type,
+                source_url,
+                confidence
+            )
+            VALUES (?, ?, ?, ?, ?)
+
+            ON CONFLICT(company_id, email) DO UPDATE SET
+
+                contact_type = excluded.contact_type,
+
+                source_url = excluded.source_url,
+
+                confidence = MAX(
+                    contacts.confidence,
+                    excluded.confidence
+                )
+        """, (
+            company_id,
+            email.lower().strip(),
+            contact_type,
+            source_url,
+            confidence,
+        ))
+
+
+def get_contacts(limit=100):
+    with connect() as c:
+        return c.execute("""
+            SELECT
+                contacts.id,
+                contacts.company_id,
+                companies.name,
+                companies.domain,
+                companies.website,
+                contacts.email,
+                contacts.contact_type,
+                contacts.source_url,
+                contacts.confidence
+            FROM contacts
+            JOIN companies
+                ON companies.id = contacts.company_id
+            ORDER BY
+                contacts.confidence DESC,
+                companies.name
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+
+def get_companies_for_contacts():
+    with connect() as c:
+        return c.execute("""
+            SELECT
+                c.id,
+                c.name,
+                c.domain,
+                c.website,
+                c.fetched_text,
+                a.raw_json
+            FROM companies c
+            JOIN analyses a
+                ON a.company_id = c.id
+            WHERE c.verified = 1
+            ORDER BY a.score DESC
+        """).fetchall()
 
 
 def stats():
@@ -271,8 +391,59 @@ def stats():
             "SELECT COUNT(*) FROM analyses"
         ).fetchone()[0]
 
+        contacts = c.execute(
+            "SELECT COUNT(*) FROM contacts"
+        ).fetchone()[0]
+
         return {
             "companies": companies,
             "verified": verified,
             "analyzed": analyzed,
+            "contacts": contacts,
         }
+
+def save_outreach(
+    company_id,
+    contact_id,
+    subject,
+    body,
+):
+    with connect() as c:
+        c.execute("""
+            INSERT INTO outreach (
+                company_id,
+                contact_id,
+                subject,
+                body,
+                status
+            )
+            VALUES (?, ?, ?, ?, 'draft')
+        """, (
+            company_id,
+            contact_id,
+            subject,
+            body,
+        ))
+
+
+def get_outreach():
+    with connect() as c:
+        return c.execute("""
+            SELECT
+                o.id,
+                o.company_id,
+                o.contact_id,
+                c.name,
+                c.website,
+                ct.email,
+                o.subject,
+                o.body,
+                o.status,
+                o.created_at
+            FROM outreach o
+            JOIN companies c
+                ON c.id = o.company_id
+            LEFT JOIN contacts ct
+                ON ct.id = o.contact_id
+            ORDER BY o.created_at DESC
+        """).fetchall()
